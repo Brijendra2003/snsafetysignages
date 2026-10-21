@@ -1,36 +1,98 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SN Safety & Signages
 
-## Getting Started
+Website and admin dashboard for **SN Safety & Signages**, a manufacturer of safety signages, emergency and exit lights, photoluminescent signs, evacuation plans and safety tapes.
 
-First, run the development server:
+**Stack:** Next.js 16 (App Router, Cache Components), TypeScript, Tailwind CSS v4, Supabase (Postgres + Auth), Cloudinary (media).
+
+## What's inside
+
+| Area | Routes |
+| --- | --- |
+| Public site | `/` home, `/products` (filter + search), `/products/[slug]`, `/about`, `/contact`, `/quote` (quote basket) |
+| Admin | `/admin/login`, `/admin` dashboard, leads, orders (with proforma invoice), products, categories, clients, testimonials, settings |
+
+### How the business flow works
+
+1. A visitor browses products and adds items to the **quote basket** (stored in their browser), or fills the contact or product enquiry form.
+2. The submission becomes a **lead** in Supabase (`source` = contact, quote, product or home).
+3. In **Admin → Leads**, staff call or WhatsApp the customer, update the status (new → contacted → qualified) and keep notes.
+4. **Convert to order** pre-fills an order with the customer's details and the quoted products. The lead is marked *converted*.
+5. The order moves through `pending → confirmed → in_production → dispatched → delivered`, with payment tracking and a printable **proforma invoice**.
+6. Products, categories, client logos, testimonials, contact details and the trust numbers are all edited from the dashboard. Changes appear on the website immediately, because the public cache is expired by tag.
+
+Until Supabase is connected, the public site shows built-in seed content (`lib/seed.ts`), so it always renders.
+
+## Setup
+
+### 1. Install
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Supabase
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Create a project at [supabase.com](https://supabase.com).
+2. Open **SQL Editor → New query**, paste all of [`supabase/schema.sql`](supabase/schema.sql) and run it. This creates the tables, security policies and seed data.
+3. In **Project Settings → API**, copy the project URL and the anon key into `.env.local`.
+4. Create your admin login: **Authentication → Users → Add user** (email + password, tick *Auto confirm*).
+5. Grant that user admin access by running this in the SQL editor:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+   ```sql
+   insert into public.admin_users (user_id, full_name)
+   select id, 'Your Name' from auth.users where email = 'you@example.com';
+   ```
 
-## Learn More
+6. Recommended: **Authentication → Providers → Email**, turn off *Allow new users to sign up*, so only users you create can exist.
 
-To learn more about Next.js, take a look at the following resources:
+### 3. Cloudinary
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Copy your **Cloud name**, **API key** and **API secret** from the Cloudinary dashboard into `.env.local`. Uploads are signed on the server (`/api/admin/cloudinary-signature`), so the secret never reaches the browser.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 4. Run
 
-## Deploy on Vercel
+```bash
+npm run dev     # http://localhost:3000
+npm run build && npm start
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Restart the dev server after changing `.env.local`. `NEXT_PUBLIC_*` values are baked in at build time, so rebuild after changing them in production.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 3D characters
+
+Character slots are listed in [`lib/characters.ts`](lib/characters.ts). Each slot shows a vector illustration until you add a render:
+
+1. Export a transparent PNG/WebP (about 1000px tall).
+2. Put it in `public/characters/`.
+3. Set that slot's `src`, for example `src: "/characters/hero-engineer.png"`.
+
+## Project structure
+
+```
+app/
+  (site)/            public pages + shared header/footer layout
+  admin/
+    login/           sign-in page
+    (panel)/         dashboard pages (sidebar layout)
+    (print)/         printable proforma invoice
+    actions/         server actions (auth, leads, orders, catalog, content)
+  api/admin/         Cloudinary signature, leads CSV export
+  actions/leads.ts   public lead submission
+components/
+  site/  home/  ui/  admin/
+lib/
+  data/public.ts     cached public reads ("use cache" + tags)
+  data/admin.ts      admin reads (session-checked)
+  auth.ts            admin session / role check
+  supabase/          Supabase clients
+  seed.ts            fallback content
+proxy.ts             refreshes the session, guards /admin
+supabase/schema.sql  database schema, RLS and seed data
+```
+
+## Security notes
+
+- Row Level Security is enabled on every table. Visitors can read live catalogue content and insert new leads. Only users listed in `admin_users` can read leads and orders or change anything.
+- Every admin page and server action re-checks the admin role on the server (`lib/auth.ts`). `proxy.ts` is only the first gate.
+- The lead form uses a honeypot field and server-side validation (zod).
