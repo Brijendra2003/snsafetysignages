@@ -123,6 +123,13 @@ h4 {
   border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
 }
 
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @utility dot-grid {
   background-image: radial-gradient(currentColor 1px, transparent 1px);
   background-size: 22px 22px;

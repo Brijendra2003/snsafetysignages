@@ -58,7 +58,7 @@ export function AdminSidebar({ badges, footer, pathname }: SidebarProps & { path
   useEffect(() => setOpen(false), [pathname]);
 
   const nav = (
-    <nav aria-label="Admin" className="flex-1 space-y-6 overflow-y-auto px-3 py-5">
+    <nav aria-label="Admin" className="no-scrollbar flex-1 space-y-6 overflow-y-auto px-3 py-5">
       {groups.map((g) => (
         <div key={g.label}>
           <p className="px-3 text-[0.65rem] font-bold tracking-[0.18em] text-brand-300/70 uppercase">{g.label}</p>

@@ -25,7 +25,14 @@ export async function signIn(_prev: ActionState, formData: FormData): Promise<Ac
   const supabase = await createSessionClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error || !data.user) {
-    return { ok: false, message: "Incorrect email or password.", values: { email } };
+    console.error("[admin sign-in]", error?.code, error?.status, error?.message);
+    const message =
+      error?.code === "email_not_confirmed"
+        ? "This email is not confirmed yet. In Supabase → Authentication → Users, confirm the user (or recreate it with Auto confirm ticked)."
+        : error?.code === "invalid_credentials" || !error
+          ? "Incorrect email or password."
+          : `Sign-in failed: ${error.message}`;
+    return { ok: false, message, values: { email } };
   }
 
   const { data: admin } = await supabase.from("admin_users").select("user_id").eq("user_id", data.user.id).maybeSingle();
