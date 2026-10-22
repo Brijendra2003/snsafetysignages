@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, DM_Sans, Kalam } from "next/font/google";
+import { Suspense } from "react";
+import { RouteSpinner } from "@/components/ui/route-spinner";
 import { site } from "@/lib/site";
 import "./globals.css";
 
@@ -42,7 +44,12 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en-IN" className={`${body.variable} ${display.variable} ${hand.variable} h-full antialiased`}>
-      <body className="flex min-h-dvh flex-col">{children}</body>
+      <body className="flex min-h-dvh flex-col">
+        {children}
+        <Suspense fallback={null}>
+          <RouteSpinner />
+        </Suspense>
+      </body>
     </html>
   );
 }
